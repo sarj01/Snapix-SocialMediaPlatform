@@ -281,7 +281,7 @@ function ReelCard({
       </div>
 
       <div className="absolute bottom-24 right-3 flex flex-col items-center gap-5 text-white z-10">
-        <button onClick={(e) => { e.stopPropagation(); onToggleLike(); }} className="flex items-center gap-1.5">
+        <button onClick={(e) => { e.stopPropagation(); onToggleLike(); }} className="flex items-center gap-0.5">
           <Heart size={30} fill={liked ? 'currentColor' : 'none'} className={liked ? 'text-accent-500 animate-pop' : 'text-white'} />
           <span className="text-xs font-medium text-white">{formatCount(reel.reel_likes.length)}</span>
         </button>

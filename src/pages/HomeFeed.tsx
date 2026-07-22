@@ -292,7 +292,7 @@ function PostCard({
           <Heart size={22} fill={liked ? 'currentColor' : 'none'} className={liked ? 'animate-pop' : ''} />
         </button>
         {post.likes.length > 0 && (
-          <span className="text-xs font-medium text-ink-700 dark:text-ink-200">{post.likes.length} like{post.likes.length > 1 ? 's' : ''}</span>
+          <span className="text-xs font-medium text-ink-700 dark:text-ink-200 -ml-1">{post.likes.length}</span>
         )}
         <button onClick={onComment} className="p-2 rounded-full hover:bg-white/10 text-ink-700 dark:text-ink-200" aria-label="Comment">
           <MessageCircle size={22} />
