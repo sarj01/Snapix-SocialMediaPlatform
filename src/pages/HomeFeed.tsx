@@ -291,6 +291,9 @@ function PostCard({
         <button onClick={onLike} className={`p-2 rounded-full hover:bg-white/10 transition-colors ${liked ? 'text-accent-500' : 'text-ink-700 dark:text-ink-200'}`} aria-label="Like">
           <Heart size={22} fill={liked ? 'currentColor' : 'none'} className={liked ? 'animate-pop' : ''} />
         </button>
+        {post.likes.length > 0 && (
+          <span className="text-xs font-medium text-ink-700 dark:text-ink-200">{post.likes.length} like{post.likes.length > 1 ? 's' : ''}</span>
+        )}
         <button onClick={onComment} className="p-2 rounded-full hover:bg-white/10 text-ink-700 dark:text-ink-200" aria-label="Comment">
           <MessageCircle size={22} />
         </button>
@@ -303,9 +306,6 @@ function PostCard({
       </div>
 
       <div className="px-3 pb-3">
-        {post.likes.length > 0 && (
-          <p className="text-xs font-medium text-ink-700 dark:text-ink-200 mb-1">{post.likes.length} like{post.likes.length > 1 ? 's' : ''}</p>
-        )}
         {post.caption && (
           <p className="text-sm text-ink-800 dark:text-ink-100 leading-snug">
             <Link to={`/u/${profile?.username}`} className="font-medium mr-1.5">{profile?.username}</Link>
