@@ -6,6 +6,7 @@ import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { Avatar, VerifiedBadge } from '../components/Avatar';
 import { Button, EmptyState, Modal, Textarea, Spinner } from '../components/ui';
+import { useDoubleTapLike, LikeBurstOverlay } from '../components/LikeBurst';
 import type { ReelWithProfile } from '../lib/types';
 import { formatCount } from '../lib/utils';
 
@@ -118,59 +119,18 @@ export default function Reels() {
         <ChevronLeft size={24} />
       </button>
 
-      {reels.map((r, i) => {
-        const liked = r.reel_likes.some((l) => l.user_id === session?.user.id);
-        return (
-          <div key={r.id} data-index={i} className="relative h-screen w-full snap-start flex items-center justify-center">
-            <video
-              ref={(el) => (videoRefs.current[i] = el)}
-              src={r.video_url}
-              loop
-              muted
-              playsInline
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30 pointer-events-none" />
-
-            <div className="absolute bottom-24 left-4 right-20 text-white z-10">
-              <div className="flex items-center gap-2 mb-3">
-                <Avatar src={r.profiles?.avatar_url} username={r.profiles?.username} size={40} to={`/u/${r.profiles?.username}`} />
-                <div className="flex items-center gap-1">
-                  <span className="font-semibold">{r.profiles?.username}</span>
-                  {r.profiles?.verified && <VerifiedBadge />}
-                </div>
-                <FollowButton userId={r.user_id} />
-              </div>
-              {r.caption && <p className="text-sm leading-snug mb-2">{r.caption}</p>}
-              {r.audio_name && (
-                <div className="flex items-center gap-2 text-xs text-white/80">
-                  <Music2 size={14} /> {r.audio_name}
-                </div>
-              )}
-            </div>
-
-            <div className="absolute bottom-24 right-3 flex flex-col items-center gap-5 text-white z-10">
-              <button onClick={() => toggleLike(r.id)} className="flex flex-col items-center gap-1">
-                <Heart size={30} fill={liked ? 'currentColor' : 'none'} className={liked ? 'text-accent-500 animate-pop' : ''} />
-                <span className="text-xs font-medium">{formatCount(r.reel_likes.length)}</span>
-              </button>
-              <button onClick={() => setCommentOpen(r.id)} className="flex flex-col items-center gap-1">
-                <MessageCircle size={28} />
-                <span className="text-xs font-medium">Comments</span>
-              </button>
-              <button onClick={() => toggleSave(r.id)} className="flex flex-col items-center gap-1">
-                <Bookmark size={28} />
-              </button>
-              <button className="flex flex-col items-center gap-1">
-                <Send size={28} />
-              </button>
-              <button className="p-1">
-                <MoreHorizontal size={24} />
-              </button>
-            </div>
-          </div>
-        );
-      })}
+      {reels.map((r, i) => (
+        <ReelCard
+          key={r.id}
+          reel={r}
+          index={i}
+          videoRef={(el) => (videoRefs.current[i] = el)}
+          liked={r.reel_likes.some((l) => l.user_id === session?.user.id)}
+          onToggleLike={() => toggleLike(r.id)}
+          onToggleSave={() => toggleSave(r.id)}
+          onOpenComments={() => setCommentOpen(r.id)}
+        />
+      ))}
 
       <ReelCommentSheet reelId={commentOpen} onClose={() => setCommentOpen(null)} />
     </div>
@@ -268,5 +228,77 @@ function ReelCommentSheet({ reelId, onClose }: { reelId: string | null; onClose:
         <Button onClick={submit} disabled={!text.trim()}>Post</Button>
       </div>
     </Modal>
+  );
+}
+
+function ReelCard({
+  reel,
+  index,
+  videoRef,
+  liked,
+  onToggleLike,
+  onToggleSave,
+  onOpenComments,
+}: {
+  reel: ReelWithProfile;
+  index: number;
+  videoRef: (el: HTMLVideoElement | null) => void;
+  liked: boolean;
+  onToggleLike: () => void;
+  onToggleSave: () => void;
+  onOpenComments: () => void;
+}) {
+  const { bursts, handleTap } = useDoubleTapLike(onToggleLike);
+
+  return (
+    <div data-index={index} className="relative h-screen w-full snap-start flex items-center justify-center" onClick={handleTap}>
+      <video
+        ref={videoRef}
+        src={reel.video_url}
+        loop
+        muted
+        playsInline
+        className="w-full h-full object-cover"
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30 pointer-events-none" />
+      <LikeBurstOverlay bursts={bursts} />
+
+      <div className="absolute bottom-24 left-4 right-20 text-white z-10">
+        <div className="flex items-center gap-2 mb-3">
+          <Avatar src={reel.profiles?.avatar_url} username={reel.profiles?.username} size={40} to={`/u/${reel.profiles?.username}`} />
+          <div className="flex items-center gap-1">
+            <span className="font-semibold">{reel.profiles?.username}</span>
+            {reel.profiles?.verified && <VerifiedBadge />}
+          </div>
+          <FollowButton userId={reel.user_id} />
+        </div>
+        {reel.caption && <p className="text-sm leading-snug mb-2">{reel.caption}</p>}
+        {reel.audio_name && (
+          <div className="flex items-center gap-2 text-xs text-white/80">
+            <Music2 size={14} /> {reel.audio_name}
+          </div>
+        )}
+      </div>
+
+      <div className="absolute bottom-24 right-3 flex flex-col items-center gap-5 text-white z-10">
+        <button onClick={(e) => { e.stopPropagation(); onToggleLike(); }} className="flex flex-col items-center gap-1">
+          <Heart size={30} fill={liked ? 'currentColor' : 'none'} className={liked ? 'text-accent-500 animate-pop' : ''} />
+          <span className="text-xs font-medium">{formatCount(reel.reel_likes.length)}</span>
+        </button>
+        <button onClick={(e) => { e.stopPropagation(); onOpenComments(); }} className="flex flex-col items-center gap-1">
+          <MessageCircle size={28} />
+          <span className="text-xs font-medium">Comments</span>
+        </button>
+        <button onClick={(e) => { e.stopPropagation(); onToggleSave(); }} className="flex flex-col items-center gap-1">
+          <Bookmark size={28} />
+        </button>
+        <button className="flex flex-col items-center gap-1">
+          <Send size={28} />
+        </button>
+        <button className="p-1">
+          <MoreHorizontal size={24} />
+        </button>
+      </div>
+    </div>
   );
 }

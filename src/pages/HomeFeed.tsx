@@ -6,6 +6,7 @@ import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import { Avatar, VerifiedBadge } from '../components/Avatar';
 import { Button, EmptyState, Modal, Textarea, Spinner } from '../components/ui';
+import { useDoubleTapLike, LikeBurstOverlay } from '../components/LikeBurst';
 import type { PostWithProfile, Comment } from '../lib/types';
 import { timeAgo } from '../lib/utils';
 
@@ -228,21 +229,10 @@ function PostCard({
   onMenu: () => void;
 }) {
   const [mediaIndex, setMediaIndex] = useState(0);
-  const [burst, setBurst] = useState(false);
-  const lastTap = useRef(0);
   const media = post.post_media.sort((a, b) => a.position - b.position);
   const liked = post.likes.length > 0;
   const profile = post.profiles;
-
-  function handleTap() {
-    const now = Date.now();
-    if (now - lastTap.current < 300) {
-      onDoubleTap();
-      setBurst(true);
-      setTimeout(() => setBurst(false), 600);
-    }
-    lastTap.current = now;
-  }
+  const { bursts, handleTap } = useDoubleTapLike(onDoubleTap);
 
   return (
     <article className="glass-card overflow-hidden animate-slide-up">
@@ -272,11 +262,7 @@ function PostCard({
         ) : (
           <img src={media[mediaIndex]?.media_url} alt={media[mediaIndex]?.alt_text || ''} className="w-full h-full object-cover" />
         )}
-        {burst && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <Heart size={96} className="text-white fill-white animate-heart-burst drop-shadow-lg" />
-          </div>
-        )}
+        <LikeBurstOverlay bursts={bursts} />
         {media.length > 1 && (
           <>
             {mediaIndex > 0 && (

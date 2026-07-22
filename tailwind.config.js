@@ -55,6 +55,8 @@ export default {
         'scale-in': 'scaleIn 0.25s cubic-bezier(0.34,1.56,0.64,1)',
         'ring-spin': 'ringSpin 3s linear infinite',
         'heart-burst': 'heartBurst 0.6s cubic-bezier(0.34,1.56,0.64,1)',
+        'like-burst': 'likeBurst 0.8s cubic-bezier(0.22,1,0.36,1) forwards',
+        'like-particle': 'likeParticle 0.7s ease-out forwards',
       },
       keyframes: {
         aurora: {
@@ -98,6 +100,19 @@ export default {
           '0%': { transform: 'scale(0) rotate(-15deg)', opacity: '0' },
           '40%': { transform: 'scale(1.2) rotate(8deg)', opacity: '1' },
           '100%': { transform: 'scale(1) rotate(0deg)', opacity: '1' },
+        },
+        likeBurst: {
+          '0%': { transform: 'scale(0) rotate(-20deg)', opacity: '0' },
+          '15%': { transform: 'scale(1.3) rotate(10deg)', opacity: '1' },
+          '30%': { transform: 'scale(0.95) rotate(-5deg)' },
+          '45%': { transform: 'scale(1.1) rotate(3deg)' },
+          '60%': { transform: 'scale(1) rotate(0deg)' },
+          '80%': { transform: 'scale(1.05)', opacity: '1' },
+          '100%': { transform: 'scale(1.4)', opacity: '0' },
+        },
+        likeParticle: {
+          '0%': { transform: 'translate(-50%,-50%) scale(1)', opacity: '1' },
+          '100%': { transform: 'translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0)', opacity: '0' },
         },
       },
     },
