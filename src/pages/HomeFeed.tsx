@@ -22,6 +22,7 @@ export default function HomeFeed() {
   const [hasMore, setHasMore] = useState(true);
   const [commentOpen, setCommentOpen] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const sentinel = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async (offset: number) => {
@@ -48,6 +49,17 @@ export default function HomeFeed() {
       setLoading(false);
     });
   }, [load]);
+
+  useEffect(() => {
+    if (!session) return;
+    supabase
+      .from('saved_posts')
+      .select('post_id')
+      .eq('user_id', session.user.id)
+      .then(({ data }) => {
+        if (data) setSavedIds(new Set(data.map((r) => r.post_id)));
+      });
+  }, [session]);
 
   useEffect(() => {
     const ch = supabase
@@ -123,12 +135,14 @@ export default function HomeFeed() {
 
   async function toggleSave(postId: string) {
     if (!session) return;
-    const { data } = await supabase.from('saved_posts').select('post_id').eq('user_id', session.user.id).eq('post_id', postId).maybeSingle();
-    if (data) {
+    const isSaved = savedIds.has(postId);
+    if (isSaved) {
       await supabase.from('saved_posts').delete().eq('user_id', session.user.id).eq('post_id', postId);
+      setSavedIds((s) => { const n = new Set(s); n.delete(postId); return n; });
       toast('Removed from saved', 'info');
     } else {
       await supabase.from('saved_posts').insert({ user_id: session.user.id, post_id: postId });
+      setSavedIds((s) => new Set(s).add(postId));
       toast('Saved', 'success');
     }
   }
@@ -171,6 +185,7 @@ export default function HomeFeed() {
           onLike={() => toggleLike(p.id)}
           onDoubleTap={() => doubleTap(p.id)}
           onSave={() => toggleSave(p.id)}
+          saved={savedIds.has(p.id)}
           onComment={() => setCommentOpen(p.id)}
           onMenu={() => setMenuOpen(p.id)}
         />
@@ -220,6 +235,7 @@ function PostCard({
   onSave,
   onComment,
   onMenu,
+  saved,
 }: {
   post: PostWithProfile;
   onLike: () => void;
@@ -227,6 +243,7 @@ function PostCard({
   onSave: () => void;
   onComment: () => void;
   onMenu: () => void;
+  saved: boolean;
 }) {
   const [mediaIndex, setMediaIndex] = useState(0);
   const media = post.post_media.sort((a, b) => a.position - b.position);
@@ -303,8 +320,8 @@ function PostCard({
         <button className="p-2 rounded-full hover:bg-white/10 text-ink-700 dark:text-ink-200" aria-label="Share">
           <Send size={22} />
         </button>
-        <button onClick={onSave} className="ml-auto p-2 rounded-full hover:bg-white/10 text-ink-700 dark:text-ink-200" aria-label="Save">
-          <Bookmark size={22} />
+        <button onClick={onSave} className={`ml-auto p-2 rounded-full hover:bg-white/10 transition-colors ${saved ? 'text-accent-500' : 'text-ink-700 dark:text-ink-200'}`} aria-label="Save">
+          <Bookmark size={22} fill={saved ? 'currentColor' : 'none'} className={saved ? 'animate-pop' : ''} />
         </button>
       </div>
 
