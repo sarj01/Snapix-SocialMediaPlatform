@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Settings as SettingsIcon, Grid3x3, Film, Bookmark, ChevronLeft, MoreHorizontal, Link as LinkIcon, MapPin, Plus, Heart, Camera, Share2 } from 'lucide-react';
+import { Settings as SettingsIcon, Grid3x3, Film, Bookmark, ChevronLeft, MoreHorizontal, Link as LinkIcon, MapPin, Plus, Heart, Camera, Share2, UserCircle } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { supabase, uploadFile } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
@@ -29,6 +29,9 @@ export default function ProfilePage() {
   const [editOpen, setEditOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [followListOpen, setFollowListOpen] = useState(false);
+  const [followListType, setFollowListType] = useState<'followers' | 'following'>('followers');
+  const postsRef = useRef<HTMLDivElement>(null);
 
   const isOwn = profile?.id === session?.user.id;
 
@@ -180,9 +183,15 @@ export default function ProfilePage() {
       </div>
 
       <div className="flex gap-6 mb-4 text-sm">
-        <div><span className="font-bold text-ink-900 dark:text-white">{formatCount(posts.length)}</span> <span className="text-ink-500">posts</span></div>
-        <div><span className="font-bold text-ink-900 dark:text-white">{formatCount(followers)}</span> <span className="text-ink-500">followers</span></div>
-        <div><span className="font-bold text-ink-900 dark:text-white">{formatCount(following)}</span> <span className="text-ink-500">following</span></div>
+        <button onClick={() => postsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="hover:opacity-70 transition-opacity">
+          <span className="font-bold text-ink-900 dark:text-white">{formatCount(posts.length)}</span> <span className="text-ink-500">posts</span>
+        </button>
+        <button onClick={() => { setFollowListType('followers'); setFollowListOpen(true); }} className="hover:opacity-70 transition-opacity">
+          <span className="font-bold text-ink-900 dark:text-white">{formatCount(followers)}</span> <span className="text-ink-500">followers</span>
+        </button>
+        <button onClick={() => { setFollowListType('following'); setFollowListOpen(true); }} className="hover:opacity-70 transition-opacity">
+          <span className="font-bold text-ink-900 dark:text-white">{formatCount(following)}</span> <span className="text-ink-500">following</span>
+        </button>
       </div>
 
       {profile.interests && profile.interests.length > 0 && (
@@ -193,7 +202,7 @@ export default function ProfilePage() {
         </div>
       )}
 
-      <div className="flex border-b border-white/10 mb-3">
+      <div ref={postsRef} className="flex border-b border-white/10 mb-3 scroll-mt-4">
         {([
           ['posts', Grid3x3, 'Posts'],
           ['reels', Film, 'Reels'],
@@ -263,6 +272,8 @@ export default function ProfilePage() {
       <EditProfileModal open={editOpen} onClose={() => setEditOpen(false)} profile={profile} onSaved={load} />
 
       <ShareProfileModal open={shareOpen} onClose={() => setShareOpen(false)} profile={profile} />
+
+      <FollowListModal open={followListOpen} onClose={() => setFollowListOpen(false)} type={followListType} userId={profile.id} />
 
       <Modal open={menuOpen} onClose={() => setMenuOpen(false)} title="Menu">
         <div className="space-y-1">
@@ -340,6 +351,53 @@ function EditProfileModal({ open, onClose, profile, onSaved }: { open: boolean; 
         <Input label="Location" value={location} onChange={(e) => setLocation(e.target.value)} />
         <Button full onClick={save} loading={saving}>Save</Button>
       </div>
+    </Modal>
+  );
+}
+
+function FollowListModal({ open, onClose, type, userId }: { open: boolean; onClose: () => void; type: 'followers' | 'following'; userId: string }) {
+  const [users, setUsers] = useState<{ id: string; username: string; full_name: string | null; avatar_url: string | null; verified: boolean }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const nav = useNavigate();
+
+  useEffect(() => {
+    if (!open) return;
+    setLoading(true);
+    const col = type === 'followers' ? 'follower_id' : 'following_id';
+    const join = type === 'followers' ? 'following_id' : 'follower_id';
+    supabase
+      .from('follows')
+      .select(`profiles:${join}(id, username, full_name, avatar_url, verified)`)
+      .eq(col, userId)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        setUsers((data?.map((r: Record<string, unknown>) => r.profiles as { id: string; username: string; full_name: string | null; avatar_url: string | null; verified: boolean }).filter(Boolean)) ?? []);
+        setLoading(false);
+      });
+  }, [open, type, userId]);
+
+  return (
+    <Modal open={open} onClose={onClose} title={type === 'followers' ? 'Followers' : 'Following'}>
+      {loading ? (
+        <div className="flex justify-center py-12"><Spinner /></div>
+      ) : users.length === 0 ? (
+        <EmptyState icon={<UserCircle size={32} />} title={type === 'followers' ? 'No followers yet' : 'Not following anyone yet'} description={type === 'followers' ? 'When people follow this account, they will appear here.' : 'Accounts this user follows will appear here.'} />
+      ) : (
+        <div className="space-y-1 max-h-[50vh] overflow-y-auto">
+          {users.map((u) => (
+            <button key={u.id} onClick={() => { onClose(); nav(`/profile/${u.username}`); }} className="w-full flex items-center gap-3 p-2 rounded-2xl hover:bg-white/5 transition-colors text-left">
+              <Avatar src={u.avatar_url} username={u.username} size={44} />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1">
+                  <span className="font-medium text-sm text-ink-900 dark:text-white truncate">@{u.username}</span>
+                  {u.verified && <VerifiedBadge size={14} />}
+                </div>
+                {u.full_name && <p className="text-xs text-ink-500 truncate">{u.full_name}</p>}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
     </Modal>
   );
 }

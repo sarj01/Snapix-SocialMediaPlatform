@@ -297,6 +297,9 @@ function PostCard({
         <button onClick={onComment} className="p-2 rounded-full hover:bg-white/10 text-ink-700 dark:text-ink-200" aria-label="Comment">
           <MessageCircle size={22} />
         </button>
+        {post.comments.length > 0 && (
+          <span className="text-xs font-medium text-ink-700 dark:text-ink-200 -ml-1">{post.comments.length}</span>
+        )}
         <button className="p-2 rounded-full hover:bg-white/10 text-ink-700 dark:text-ink-200" aria-label="Share">
           <Send size={22} />
         </button>
@@ -311,11 +314,6 @@ function PostCard({
             <Link to={`/u/${profile?.username}`} className="font-medium mr-1.5">{profile?.username}</Link>
             {post.caption}
           </p>
-        )}
-        {post.comments.length > 0 && (
-          <button onClick={onComment} className="mt-1 text-xs text-ink-500 hover:underline">
-            View all {post.comments.length} comments
-          </button>
         )}
         <p className="mt-1 text-[11px] text-ink-400">{timeAgo(post.created_at)}</p>
       </div>
