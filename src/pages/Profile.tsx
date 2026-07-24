@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Settings as SettingsIcon, Grid3x3, Film, Bookmark, ChevronLeft, MoreHorizontal, Link as LinkIcon, MapPin, Plus, Heart, Camera } from 'lucide-react';
+import { Settings as SettingsIcon, Grid3x3, Film, Bookmark, ChevronLeft, MoreHorizontal, Link as LinkIcon, MapPin, Plus, Heart, Camera, Share2 } from 'lucide-react';
+import { QRCodeCanvas } from 'qrcode.react';
 import { supabase, uploadFile } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/Toast';
@@ -27,6 +28,7 @@ export default function ProfilePage() {
   const [following, setFollowing] = useState(0);
   const [editOpen, setEditOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const isOwn = profile?.id === session?.user.id;
 
@@ -153,11 +155,21 @@ export default function ProfilePage() {
           <p className="text-sm text-ink-500">@{profile.username}</p>
         </div>
         {isOwn ? (
-          <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}>Edit profile</Button>
+          <div className="flex gap-2">
+            <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}>Edit profile</Button>
+            <Button variant="secondary" size="sm" onClick={() => setShareOpen(true)}>
+              <Share2 size={15} className="mr-1.5" /> Share
+            </Button>
+          </div>
         ) : (
-          <Button variant={isFollowing ? 'secondary' : 'primary'} size="sm" onClick={toggleFollow}>
-            {isFollowing ? 'Following' : 'Follow'}
-          </Button>
+          <div className="flex gap-2">
+            <Button variant={isFollowing ? 'secondary' : 'primary'} size="sm" onClick={toggleFollow}>
+              {isFollowing ? 'Following' : 'Follow'}
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => setShareOpen(true)}>
+              <Share2 size={15} className="mr-1.5" /> Share
+            </Button>
+          </div>
         )}
       </div>
 
@@ -250,6 +262,8 @@ export default function ProfilePage() {
 
       <EditProfileModal open={editOpen} onClose={() => setEditOpen(false)} profile={profile} onSaved={load} />
 
+      <ShareProfileModal open={shareOpen} onClose={() => setShareOpen(false)} profile={profile} />
+
       <Modal open={menuOpen} onClose={() => setMenuOpen(false)} title="Menu">
         <div className="space-y-1">
           <button onClick={() => { setMenuOpen(false); nav('/settings'); }} className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl hover:bg-white/5 text-ink-700 dark:text-ink-200 text-sm">
@@ -325,6 +339,49 @@ function EditProfileModal({ open, onClose, profile, onSaved }: { open: boolean; 
         <Input label="Website" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://..." />
         <Input label="Location" value={location} onChange={(e) => setLocation(e.target.value)} />
         <Button full onClick={save} loading={saving}>Save</Button>
+      </div>
+    </Modal>
+  );
+}
+
+function ShareProfileModal({ open, onClose, profile }: { open: boolean; onClose: () => void; profile: Profile }) {
+  const profileUrl = `${window.location.origin}/profile/${profile.username}`;
+  const [copied, setCopied] = useState(false);
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(profileUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="Share profile">
+      <div className="flex flex-col items-center gap-4 py-2">
+        <div className="relative p-5 rounded-3xl bg-white shadow-lg">
+          <QRCodeCanvas
+            value={profileUrl}
+            size={200}
+            level="H"
+            marginSize={0}
+            imageSettings={{
+              src: '/snapix.svg',
+              height: 40,
+              width: 40,
+              excavate: true,
+            }}
+          />
+        </div>
+        <div className="text-center">
+          <p className="text-lg font-semibold text-ink-900 dark:text-ink-50">@{profile.username}</p>
+          <p className="text-sm text-ink-500 dark:text-ink-400">{profile.full_name}</p>
+        </div>
+        <button
+          onClick={copyLink}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl glass text-ink-700 dark:text-ink-200 text-sm font-medium hover:bg-white/10 transition-colors"
+        >
+          <LinkIcon size={16} />
+          {copied ? 'Link copied!' : 'Copy profile link'}
+        </button>
       </div>
     </Modal>
   );
