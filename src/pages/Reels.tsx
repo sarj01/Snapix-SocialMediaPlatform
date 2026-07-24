@@ -80,6 +80,24 @@ export default function Reels() {
     }
   }
 
+  async function likeReel(reelId: string) {
+    if (!session) return;
+    const reel = reels.find((r) => r.id === reelId);
+    const existing = reel?.reel_likes.some((l) => l.user_id === session.user.id);
+    if (existing) return;
+    await supabase.from('reel_likes').insert({ user_id: session.user.id, reel_id: reelId });
+    if (reel && reel.user_id !== session.user.id) {
+      await supabase.from('notifications').insert({
+        user_id: reel.user_id,
+        actor_id: session.user.id,
+        type: 'reel_like',
+        entity_id: reelId,
+        entity_type: 'reel',
+      });
+    }
+    setReels((rs) => rs.map((r) => (r.id === reelId ? { ...r, reel_likes: [...r.reel_likes, { user_id: session.user.id }] } : r)));
+  }
+
   async function toggleSave(reelId: string) {
     if (!session) return;
     const { data } = await supabase.from('saved_posts').select('post_id').eq('user_id', session.user.id).eq('post_id', reelId).maybeSingle();
@@ -127,6 +145,7 @@ export default function Reels() {
           videoRef={(el) => (videoRefs.current[i] = el)}
           liked={r.reel_likes.some((l) => l.user_id === session?.user.id)}
           onToggleLike={() => toggleLike(r.id)}
+          onDoubleTapLike={() => likeReel(r.id)}
           onToggleSave={() => toggleSave(r.id)}
           onOpenComments={() => setCommentOpen(r.id)}
         />
@@ -245,10 +264,11 @@ function ReelCard({
   videoRef: (el: HTMLVideoElement | null) => void;
   liked: boolean;
   onToggleLike: () => void;
+  onDoubleTapLike: () => void;
   onToggleSave: () => void;
   onOpenComments: () => void;
 }) {
-  const { bursts, handleTap } = useDoubleTapLike(onToggleLike);
+  const { bursts, handleTap } = useDoubleTapLike(onDoubleTapLike);
 
   return (
     <div data-index={index} className="relative h-screen w-full snap-start flex items-center justify-center" onClick={handleTap}>
